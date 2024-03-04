@@ -1,7 +1,11 @@
+require('dotenv').config()
 const express = require("express")
 const morgan = require("morgan")
 const cors = require("cors")
 const app = express()
+
+const mongoose = require('mongoose')
+const Person = require('./models/person')
 
 
 app.use(cors())
@@ -51,51 +55,55 @@ const generateID = () => {
 
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Person.find({}).then(persons => response.json(persons))
 })
 
-app.get('/info', (request,response) => {
+app.get('/info', async (request,response) => {
     const now = new Date(8.64e15).toString()
-    const people = persons.length
+    const people = await Person.find({}).then(p => {
+      return p.length
+    })
     response.send(`<p>Phonebook has info for ${people} people </p> <p>${now}</p>`)
 })
 
 app.post('/api/persons', (request, response) => {
-    const person = request.body
-    const id = generateID()
-    person.id = id
-    if(!person.name) {
-        response.status(400).json({'error':'please enter a name'})
-    }
-    if(!person.number) {
-        response.status(400).json({'error':'please enter a number'})
-    }
-    if(persons.find(p => p.name === person.name)) {
-        console.log(person.name)
-        response.status(400).json({'error':'Person already exists'})
-    }
+    const body = request.body
 
-    response.json(person) 
+    const person = new Person({
+        name: body.name,
+        number: body.number
+    })
+    person.save().then(newPerson => response.json(newPerson))
+    
 })
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-
-    if(person) {
-        response.json(person)
-        
-    }   else {
-        response.status(404).end()
-    }
+app.get('/api/persons/:id', (request, response, next) => {
+      Person.findById(request.params.id)
+            .then(person => response.json(person))
+            .catch(error => next(error))
 
 })
 
-app.delete('/api/persons/:id', (request,response) => {
-    const id = Number(request.params.id)
-    const people = persons.filter(person => person.id !== id)
-    console.log(people)
-    response.status(204).end()
+
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
+  const updatedPerson = {
+    name: body.name,
+    number: body.number
+  }
+
+  Person.findByIdAndUpdate(request.params.id, updatedPerson, {new:true})
+        .then(result => {
+          response.json(result)
+        })
+        .catch(error => next(error))
+})
+
+
+app.delete('/api/persons/:id', (request,response, next) => {
+    Person.findByIdAndDelete(request.params.id) 
+          .then(response.status(204).end())
+          .catch(error => next(error))
 })
 
 const unknownEndpoint = (request, response) => {
@@ -104,6 +112,16 @@ const unknownEndpoint = (request, response) => {
   
   app.use(unknownEndpoint)
 
+const errorHandler = (error, request, response, next) => {
+  console.log(error.message)
 
-const PORT = process.env.PORT || 3001
+  if(error.name === 'CastError') {
+    return response.status(400).send({error:'Malformed ID'})
+  }
+  next(error)
+
+}
+app.use(errorHandler)
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {console.log(`App starting on port: ${PORT}`)})
