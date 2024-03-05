@@ -9,13 +9,17 @@
     "dev": "nodemon index.js",
     "build:ui": "rm -rf dist && cd ../phonebook && npm run build && cp -r dist ../phonebook-server",
     "deploy": "fly deploy",
-    "deploy:full": "npm run build:ui && npm run deploy",    
-    "logs:prod": "fly logs"
+    "deploy:full": "npm run build:ui && npm run deploy",
+    "logs:prod": "fly logs",
+    "lint" : "eslint ."
   },
   "author": "Jon Smith",
   "license": "MIT",
   "devDependencies": {
     "@flydotio/dockerfile": "^0.5.2",
+    "@stylistic/eslint-plugin-js": "^1.6.3",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.0",
     "nodemon": "^3.1.0"
   },
   "dependencies": {
